@@ -112,8 +112,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                   }
 
                   int hour = LocalTime.now().getHour();
-                  if (hour < shared.getInt("maxHour", 10)) {
-                      calendar.add(Calendar.HOUR_OF_DAY, shared.getInt("hoursPerDay", 8));
+                  if (hour < Integer.parseInt(shared.getString("maxHour", "10"))) {
+                      calendar.add(Calendar.HOUR_OF_DAY, Integer.parseInt(shared.getString("hoursPerDay", "8")));
                   }
                   calendar.add(Calendar.MINUTE, 55);
                   setAlarm(calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE));
