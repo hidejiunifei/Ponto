@@ -1,0 +1,15 @@
+<resources>
+    <!-- Reply Preference -->
+    <string-array name="maxHourEntries">
+        <item>7</item>
+        <item>8</item>
+        <item>9</item>
+        <item>10</item>
+    </string-array>
+    <integer-array name="maxHourValues">
+        <item>7</item>
+        <item>8</item>
+        <item>9</item>
+        <item>10</item>
+    </integer-array>
+</resources>

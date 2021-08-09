@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <PreferenceCategory app:title="google sheets">
+        <EditTextPreference android:key="sheetId" android:title="Google sheet unique identifier" />
+        <SwitchPreference android:key="writeSheet" android:title="Write data to google sheet" android:defaultValue="false" />
+        <EditTextPreference android:key="maxHour" android:title="Maximum hour to consider to set the alarm to the end of the day" android:defaultValue="10" />
+        <EditTextPreference android:key="hoursPerDay" android:title="Number of working hours in a day" android:defaultValue="8" />
+    </PreferenceCategory>
+</PreferenceScreen>

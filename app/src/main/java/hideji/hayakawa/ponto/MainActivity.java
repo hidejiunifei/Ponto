@@ -5,16 +5,22 @@ import android.accounts.AccountManager;
 import android.accounts.AccountManagerCallback;
 import android.accounts.AccountManagerFuture;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.app.Activity;
 import android.provider.AlarmClock;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.preference.PreferenceManager;
 
 import com.google.android.gms.common.api.CommonStatusCodes;
 import com.google.api.client.extensions.android.http.AndroidHttp;
@@ -40,7 +46,7 @@ import java.util.regex.Pattern;
  * Main activity demonstrating how to pass extra parameters to an activity that
  * recognizes text.
  */
-public class MainActivity extends Activity implements View.OnClickListener {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private static final int AUTHORIZATION_CODE = 1993;
     private static final int ACCOUNT_CODE = 1601;
@@ -54,13 +60,14 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private TextView statusMessage;
     private TextView textValue;
     private Button btnNow;
+    private MenuItem item;
 
     private static final int RC_OCR_CAPTURE = 9003;
     private static final String TAG = "MainActivity";
 
     private HttpTransport transport = AndroidHttp.newCompatibleTransport();
     private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
-    private final String spreadsheetId = "1_S6tPLBqYsSxE4c1cMdP7EC5dHsPGQkKAKIPgmB1Nvs";
+    SharedPreferences shared;
 
     public MainActivity() {
     }
@@ -69,6 +76,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        shared = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 
         statusMessage = findViewById(R.id.status_message);
         textValue = findViewById(R.id.text_value);
@@ -80,36 +89,54 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
         btnNow = findViewById(R.id.btnNow);
         btnNow.setOnClickListener(new View.OnClickListener() {
-                                      @Override
-                                      public void onClick(View view) {
-                                          SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm"),
-                                                  dateFormat = new SimpleDateFormat("dd/MM");
-                                          Calendar calendar = Calendar.getInstance();
-                                          boolean success = writeToSpreadSheet(spreadsheetId, timeFormat.format(calendar.getTime()),
-                                                  dateFormat.format(calendar.getTime()));
-                                          Toast toast = Toast.makeText(getApplicationContext(), "", Toast.LENGTH_SHORT);
-                                          toast.setGravity(Gravity.CENTER, 0, 0);
+              @Override
+              public void onClick(View view) {
+                  SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm"),
+                          dateFormat = new SimpleDateFormat("dd/MM");
+                  Calendar calendar = Calendar.getInstance();
 
-                                          toast.setText(success ? "valor inserido" : "data não encontrada ou sem espaço");
-                                          toast.show();
+                  SharedPreferences shared = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 
-                                          int hour = LocalTime.now().getHour();
-                                          if (hour > 10 && hour < 16) {
-                                              calendar.add(Calendar.HOUR_OF_DAY, 1);
-                                              setAlarm(calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE));
-                                          }
-                                      }
-                                  });
+                  if (shared.getBoolean("writeSheet", false)) {
+                      String spreadsheetId = shared.getString("sheetId", "");
 
-        accountManager = AccountManager.get(this);
+                      if(!spreadsheetId.isEmpty()){
+                          boolean success = writeToSpreadSheet(spreadsheetId, timeFormat.format(calendar.getTime()),
+                                  dateFormat.format(calendar.getTime()));
+                          Toast toast = Toast.makeText(getApplicationContext(), "", Toast.LENGTH_SHORT);
+                          toast.setGravity(Gravity.CENTER, 0, 0);
 
-        authPreferences = new AuthPreferences(this);
-        if (authPreferences.getUser() != null
-                && authPreferences.getToken() != null) {
-            refreshToken();
-        } else {
-            chooseAccount();
+                          toast.setText(success ? "valor inserido" : "data não encontrada ou sem espaço");
+                          toast.show();
+                      }
+                  }
+
+                  int hour = LocalTime.now().getHour();
+                  if (hour < shared.getInt("maxHour", 10)) {
+                      calendar.add(Calendar.HOUR_OF_DAY, shared.getInt("hoursPerDay", 8));
+                  }
+                  calendar.add(Calendar.MINUTE, 55);
+                  setAlarm(calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE));
+              }
+            });
+
+        if (shared.getBoolean("writeSheet", false)) {
+            accountManager = AccountManager.get(this);
+
+            authPreferences = new AuthPreferences(this);
+            if (authPreferences.getUser() != null
+                    && authPreferences.getToken() != null) {
+                refreshToken();
+            } else {
+                chooseAccount();
+            }
         }
+    }
+
+    public boolean openSettingsActivity(MenuItem item){
+        Intent intent = new Intent(this, SettingsActivity.class);
+        startActivity(intent);
+        return true;
     }
 
     private void chooseAccount() {
@@ -228,8 +255,11 @@ public class MainActivity extends Activity implements View.OnClickListener {
                         final String day = m.group(1), time = m.group(2);
 
                         textValue.setText(day + " " + time);
+                        String spreadsheetId = shared.getString("sheetId", "");
 
-                        writeToSpreadSheet(spreadsheetId, time, day);
+                        if(!spreadsheetId.isEmpty() && shared.getBoolean("writeSheet", false)) {
+                            writeToSpreadSheet(spreadsheetId, time, day);
+                        }
                     }
                 } else {
                     statusMessage.setText(R.string.ocr_failure);
@@ -277,15 +307,19 @@ public class MainActivity extends Activity implements View.OnClickListener {
             public void run() {
                 Sheets sheetsService;
                 sheetsService = new Sheets.Builder(transport, JSON_FACTORY, getCredential())
-                        .setApplicationName("My Awesome App")
+                        .setApplicationName("Ponto")
                         .build();
 
                 String range = "Corrente!B13:I43";
                 ValueRange result = null;
                 try {
-                    result = sheetsService.spreadsheets().values()
-                            .get(spreadsheetId, range)
-                            .execute();
+                    String spreadsheetId = shared.getString("sheetId", "");
+
+                    if(!spreadsheetId.isEmpty()) {
+                        result = sheetsService.spreadsheets().values()
+                                .get(spreadsheetId, range)
+                                .execute();
+                    }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -306,7 +340,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
             public void run() {
                 Sheets sheetsService;
                 sheetsService = new Sheets.Builder(transport, JSON_FACTORY, getCredential())
-                        .setApplicationName("My Awesome App")
+                        .setApplicationName("Ponto")
                         .build();
 
                 String range = "Corrente!B13:I43";
