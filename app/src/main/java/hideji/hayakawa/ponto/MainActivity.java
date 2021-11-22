@@ -7,7 +7,6 @@ import android.accounts.AccountManagerFuture;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.app.Activity;
 import android.provider.AlarmClock;
 import android.util.Log;
 import android.view.Gravity;
@@ -18,7 +17,6 @@ import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.PreferenceManager;
 
@@ -310,7 +308,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         .setApplicationName("Ponto")
                         .build();
 
-                String range = "Corrente!B13:I43";
+                String range = "Corrente!A1:E31";
                 ValueRange result = null;
                 try {
                     String spreadsheetId = shared.getString("sheetId", "");
@@ -343,7 +341,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         .setApplicationName("Ponto")
                         .build();
 
-                String range = "Corrente!B13:I43";
+                String range = "Corrente!A1:E31";
                 ValueRange result = null;
                 try {
                     result = sheetsService.spreadsheets().values()
@@ -364,12 +362,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                     for (List<Object> item :
                             values) {
-                        if (item.size() < 8 && item.size() > 2 && item.get(0).equals(day)) {
+                        if (item.size() < 5 && item.size() > 0 && item.get(0).equals(day)) {
                             updateValue.get(0).add(value);
                             try {
                                 sheetsService.spreadsheets().values()
                                         .update(spreadsheetId,
-                                                "Corrente!" + (char) ('F' + (item.size() < 4 ? 0 : item.size() - 4)) + (13 + values.indexOf(item)),
+                                                "Corrente!" + (char) ('A' + item.size()) + (1 + values.indexOf(item)),
                                                 new ValueRange().setValues(updateValue))
                                         .setValueInputOption("USER_ENTERED")
                                         .execute();
